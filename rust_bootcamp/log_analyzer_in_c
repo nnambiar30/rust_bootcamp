@@ -1,0 +1,140 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_LINE 1024
+#define MAX_DATE 32
+#define MAX_LEVEL 16
+#define MAX_MESSAGE 512
+
+typedef struct LogEntry {
+    char date[MAX_DATE];
+    char level[MAX_LEVEL];
+    char message[MAX_MESSAGE];
+} LogEntry;
+
+typedef struct DailyCount {
+    char date[MAX_DATE];
+    int info;
+    int warning;
+    int error;
+    struct DailyCount* next;
+} DailyCount;
+
+typedef struct ErrorFreq {
+    char message[MAX_MESSAGE];
+    int count;
+    struct ErrorFreq* next;
+} ErrorFreq;
+
+// Function prototypes
+int parse_line(const char* line, LogEntry* entry);
+void update_counts(DailyCount** head, LogEntry* entry);
+void update_errors(ErrorFreq** head, const char* message);
+void write_summary(FILE* out, DailyCount* head, ErrorFreq* errors);
+void write_invalid_line(FILE* badfile, const char* line);
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <logfile> [output_summary.txt]\n", argv[0]);
+        return 1;
+    }
+
+    FILE* logfile = fopen(argv[1], "r");
+    if (!logfile) {
+        perror("Error opening log file");
+        return 1;
+    }
+
+    const char* output_filename = argc > 2 ? argv[2] : "summary.txt";
+    FILE* summary = fopen(output_filename, "w");
+    FILE* bad_lines = fopen("bad_lines.txt", "w");
+
+    DailyCount* daily_counts = NULL;
+    ErrorFreq* error_freqs = NULL;
+    char line[MAX_LINE];
+
+    while (fgets(line, sizeof(line), logfile)) {
+        LogEntry entry;
+        if (parse_line(line, &entry)) {
+            update_counts(&daily_counts, &entry);
+            if (strcmp(entry.level, "ERROR") == 0) {
+                update_errors(&error_freqs, entry.message);
+            }
+        } else {
+            write_invalid_line(bad_lines, line);
+        }
+    }
+
+    write_summary(summary, daily_counts, error_freqs);
+
+    fclose(logfile);
+    fclose(summary);
+    fclose(bad_lines);
+
+    return 0;
+}
+
+// Parse a line into a LogEntry struct
+int parse_line(const char* line, LogEntry* entry) {
+    return sscanf(line, "%31s %*s [%15[^]]] %[^\n]", entry->date, entry->level, entry->message) == 3;
+}
+
+// Update log level counts for a given date
+void update_counts(DailyCount** head, LogEntry* entry) {
+    DailyCount* current = *head;
+    while (current) {
+        if (strcmp(current->date, entry->date) == 0) break;
+        current = current->next;
+    }
+
+    if (!current) {
+        current = malloc(sizeof(DailyCount));
+        strcpy(current->date, entry->date);
+        current->info = 0;
+        current->warning = 0;
+        current->error = 0;
+        current->next = *head;
+        *head = current;
+    }
+
+    if (strcmp(entry->level, "INFO") == 0) current->info++;
+    else if (strcmp(entry->level, "WARNING") == 0) current->warning++;
+    else if (strcmp(entry->level, "ERROR") == 0) current->error++;
+}
+
+void update_errors(ErrorFreq** head, const char* message) {
+    ErrorFreq* current = *head;
+    while (current) {
+        if (strcmp(current->message, message) == 0) {
+            current->count++;
+            return;
+        }
+        current = current->next;
+    }
+
+    ErrorFreq* new_node = malloc(sizeof(ErrorFreq));
+    strcpy(new_node->message, message);
+    new_node->count = 1;
+    new_node->next = *head;
+    *head = new_node;
+}
+
+void write_summary(FILE* out, DailyCount* head, ErrorFreq* errors) {
+    fprintf(out, "Log Summary By Date:\n");
+    while (head) {
+        fprintf(out, "%s - INFO: %d, WARNING: %d, ERROR: %d\n",
+                head->date, head->info, head->warning, head->error);
+        head = head->next;
+    }
+
+    fprintf(out, "\nMost Frequent Errors:\n");
+    while (errors) {
+        fprintf(out, "\"%s\" - %d occurrences\n", errors->message, errors->count);
+        errors = errors->next;
+    }
+}
+
+void write_invalid_line(FILE* badfile, const char* line) {
+    fprintf(badfile, "%s", line);
+}

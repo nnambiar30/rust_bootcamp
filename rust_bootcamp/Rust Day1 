@@ -1,0 +1,89 @@
+
+
+Day 1
+-------
+
+
+Methods in Rust 
+    - Methods belong to structs
+    
+
+    struct Task {
+        name: String,
+        completed: bool,
+    }
+
+    impl Task {
+        fn new(name: String) -> Self {
+            Task { name, completed: false }
+        }
+
+        fn complete(&mut self) {
+            self.completed = true;
+        }
+    }
+
+
+Rust Essentials: Values
+
+A value in Rust is:
+    An instance of a type that opccupies memory and can be moved
+    borrowed or copied
+
+    A value is a "thing" that lives somewhere in memory
+
+    VALUES have ownership! Variables don't really mean anything it's actually the value itself
+
+
+    let s1 = String::from("hello")
+    let s2 = s1 // ownership moves
+
+    Variables bind to values, but do not own them in the C sense -- ownership and move semantics are enforced by Rust
+
+    Values - Example in a function
+
+    fn print_value(v: String) {
+        println!("Teh value is: {}", v);
+    }
+
+    fn main() {
+        let name = String::from("Alice");
+        print_value(name);
+    }
+
+Data Types: Compound Types - Arrays and Slices
+
+    Arrays store fixed length, same-type elemtns
+    Slices are views into arrays or vectors
+
+Data Types: Pointer and Reference Types
+    &T: immutable reference
+    &mut T: mutable reference
+    Safe by defualt, checked by borrow checker
+
+Data types: Optional and Error Types
+    Option<T>: value or nothing
+    Result<T, E> success or error
+    Enforce explicit handling or absence and failure
+
+Data types: Special types:
+    Unit type () indicates "no value"
+     Never type ! means "does not return"
+
+
+---------------------------------------------------
+
+Day 2
+
+Concurrency
+
+    Smart Pointers:
+        Special types that behave like Pointers
+        Automatically manage memory or accesss
+        Automatic memory cleanup
+        Make shared ownership explicit
+
+    Box<T>:
+        Owns a single value on the heap
+        Follows RUSt owernship rules
+        
